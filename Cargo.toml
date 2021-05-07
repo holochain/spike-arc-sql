@@ -1,0 +1,11 @@
+[package]
+name = "spike-arc-sql"
+version = "0.1.0"
+authors = ["neonphog <neonphog@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+rand = "0.8.3"
+rmp-serde = "0.15.4"
+rusqlite = { version = "0.25.1", features = ["sqlcipher"] }
+serde = { version = "1", features = ["derive", "rc"] }
