@@ -178,6 +178,39 @@ fn count_agents_overlaping_arc(con: &Connection, arc: DhtArc) -> Result<usize> {
     stmt.query_row(params![start_1, end_1, start_2, end_2], |r| r.get(0))
 }
 
+fn list_close_agents(con: &Connection, loc: u32) -> Result<Vec<u64>> {
+    let mut stmt = con.prepare(
+        "SELECT min(
+            CASE WHEN arc_start1 IS NULL OR arc_end1 IS NULL
+            THEN 4294967296
+            ELSE
+                CASE WHEN ?1 >= arc_start1 AND ?1 <= arc_end1
+                THEN 0
+                WHEN ?1 < arc_start1 THEN arc_start1 - ?1
+                ELSE ?1 - arc_end1
+                END
+            END,
+            CASE WHEN arc_start2 IS NULL OR arc_end2 IS NULL
+            THEN 4294967296
+            ELSE
+                CASE WHEN ?1 >= arc_start2 AND ?1 <= arc_end2
+                THEN 0
+                WHEN ?1 < arc_start2 THEN arc_start2 - ?1
+                ELSE ?1 - arc_end2
+                END
+            END
+        ) AS distance
+        FROM p2p_store
+        ORDER BY distance
+        ;",
+    )?;
+    let mut out = Vec::new();
+    for r in stmt.query_map(params![loc], |r| r.get(0))? {
+        out.push(r?);
+    }
+    Ok(out)
+}
+
 fn main() -> Result<()> {
     let con = Connection::open_in_memory()?;
 
@@ -221,6 +254,10 @@ fn main() -> Result<()> {
     let overlap = DhtArc::new(mid, u32::MAX / 4);
     let res = count_agents_overlaping_arc(&con, overlap.clone())?;
     println!("agents overlapping {:?}: {}", &overlap, res);
+
+    for r in list_close_agents(&con, mid)? {
+        println!("-- {:?}", r);
+    }
 
     Ok(())
 }
